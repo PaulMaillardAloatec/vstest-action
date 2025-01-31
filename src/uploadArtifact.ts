@@ -1,75 +1,58 @@
 import * as core from '@actions/core';
-import {create, UploadOptions} from '@actions/artifact';
-import {findFilesToUpload} from './search';
-import {getInputs} from './input-helper';
-import {NoFileOptions} from './constants';
+import { DefaultArtifactClient } from '@actions/artifact';
+import { findFilesToUpload } from './search';
+import { getInputs } from './input-helper';
+import { NoFileOptions } from './constants';
 
 export async function uploadArtifact() {
   try {
-    const inputs = getInputs()
-    const searchResult = await findFilesToUpload(inputs.searchPath)
+    const inputs = getInputs();
+    const searchResult = await findFilesToUpload(inputs.searchPath);
 
     if (searchResult.filesToUpload.length === 0) {
-      // No files were found, different use cases warrant different types of behavior if nothing is found
+      // Gestion des cas où aucun fichier n'est trouvé
       switch (inputs.ifNoFilesFound) {
-        case NoFileOptions.warn: {
-          core.warning(
-            `No files were found with the provided path: ${inputs.searchPath}. No artifacts will be uploaded.`
-          )
-          break
-        }
-        case NoFileOptions.error: {
-          core.setFailed(
-            `No files were found with the provided path: ${inputs.searchPath}. No artifacts will be uploaded.`
-          )
-          break
-        }
-        case NoFileOptions.ignore: {
-          core.info(
-            `No files were found with the provided path: ${inputs.searchPath}. No artifacts will be uploaded.`
-          )
-          break
-        }
+        case NoFileOptions.warn:
+          core.warning(`No files were found at path: ${inputs.searchPath}. No artifacts will be uploaded.`);
+          break;
+        case NoFileOptions.error:
+          core.setFailed(`No files were found at path: ${inputs.searchPath}. No artifacts will be uploaded.`);
+          return; // Arrêt de l'exécution
+        case NoFileOptions.ignore:
+          core.info(`No files were found at path: ${inputs.searchPath}. No artifacts will be uploaded.`);
+          return; // Arrêt de l'exécution
       }
-    } else {
-      const s = searchResult.filesToUpload.length === 1 ? '' : 's'
-      core.info(
-        `With the provided path, there will be ${searchResult.filesToUpload.length} file${s} uploaded`
-      )
-      core.debug(`Root artifact directory is ${searchResult.rootDirectory}`)
-
-      if (searchResult.filesToUpload.length > 10000) {
-        core.warning(
-          `There are over 10,000 files in this artifact, consider create an archive before upload to improve the upload performance.`
-        )
-      }
-
-      const artifactClient = create()
-      const options: UploadOptions = {
-        continueOnError: false
-      }
-      if (inputs.retentionDays) {
-        options.retentionDays = inputs.retentionDays
-      }
-
-      const uploadResponse = await artifactClient.uploadArtifact(
-        inputs.artifactName,
-        searchResult.filesToUpload,
-        searchResult.rootDirectory,
-        options
-      )
-
-      if (uploadResponse.failedItems.length > 0) {
-        core.setFailed(
-          `An error was encountered when uploading ${uploadResponse.artifactName}. There were ${uploadResponse.failedItems.length} items that failed to upload.`
-        )
-      } else {
-        core.info(
-          `Artifact ${uploadResponse.artifactName} has been successfully uploaded!`
-        )
-      }
+      return; // Ajouté pour éviter de continuer si aucun fichier n'est trouvé
     }
-  } catch (err) {
-    core.setFailed(err.message)
+
+    const fileCount = searchResult.filesToUpload.length;
+    core.info(`Found ${fileCount} file${fileCount === 1 ? '' : 's'} to upload.`);
+    core.debug(`Root artifact directory: ${searchResult.rootDirectory}`);
+
+    if (fileCount > 10000) {
+      core.warning('There are over 10,000 files in this artifact. Consider creating an archive before uploading for better performance.');
+    }
+
+    const artifactClient = new DefaultArtifactClient(); // Correction de l'instanciation
+    const options = {
+      continueOnError: false,
+      retentionDays: inputs.retentionDays || undefined,
+    };
+
+    const uploadResponse = await artifactClient.uploadArtifact(
+      inputs.artifactName,
+      searchResult.filesToUpload,
+      searchResult.rootDirectory,
+      options
+    );
+
+    core.info(`Artifact "${uploadResponse.id}" has been successfully uploaded!`);
+
+  } catch (err: unknown) {
+    if (err instanceof Error) {
+      core.setFailed(`Error: ${err.message}`);
+    } else {
+      core.setFailed('An unknown error occurred.');
+    }
   }
 }
