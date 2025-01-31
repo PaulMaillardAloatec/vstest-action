@@ -28,6 +28,7 @@ export async function uploadArtifact() {
     const fileCount = searchResult.filesToUpload.length;
     core.info(`Found ${fileCount} file${fileCount === 1 ? '' : 's'} to upload.`);
     core.debug(`Root artifact directory: ${searchResult.rootDirectory}`);
+    
 
     if (fileCount > 10000) {
       core.warning('There are over 10,000 files in this artifact. Consider creating an archive before uploading for better performance.');
@@ -39,8 +40,10 @@ export async function uploadArtifact() {
       retentionDays: inputs.retentionDays || undefined,
     };
 
+    const uniqueArtifactName = `${inputs.artifactName}-${process.env.GITHUB_RUN_ID}-${process.env.GITHUB_JOB}`;
+
     const uploadResponse = await artifactClient.uploadArtifact(
-      inputs.artifactName,
+      uniqueArtifactName,
       searchResult.filesToUpload,
       searchResult.rootDirectory,
       options
