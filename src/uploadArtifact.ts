@@ -3,6 +3,7 @@ import { DefaultArtifactClient } from '@actions/artifact';
 import { findFilesToUpload } from './search';
 import { getInputs } from './input-helper';
 import { NoFileOptions } from './constants';
+import { randomBytes  } from 'crypto';
 
 export async function uploadArtifact() {
   try {
@@ -40,7 +41,7 @@ export async function uploadArtifact() {
       retentionDays: inputs.retentionDays || undefined,
     };
 
-    const uniqueArtifactName = `${inputs.artifactName}-${process.env.GITHUB_RUN_ID}-${process.env.GITHUB_JOB}`;
+    const uniqueArtifactName = `${inputs.artifactName}-${randomBytes(16).toString('hex')}`;
 
     const uploadResponse = await artifactClient.uploadArtifact(
       uniqueArtifactName,
