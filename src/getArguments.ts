@@ -1,9 +1,4 @@
 import * as core from '@actions/core';
-import * as exec from '@actions/exec';
-import * as path from 'path';
-import {findFilesToUpload} from './search';
-import {getInputs} from './input-helper';
-import {NoFileOptions} from './constants';
 
 export function getArguments(): string {
   let args = ''

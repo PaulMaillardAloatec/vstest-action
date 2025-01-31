@@ -47,12 +47,7 @@ export async function uploadArtifact() {
     );
 
     core.info(`Artifact "${uploadResponse.id}" has been successfully uploaded!`);
-
-  } catch (err: unknown) {
-    if (err instanceof Error) {
-      core.setFailed(`Error: ${err.message}`);
-    } else {
-      core.setFailed('An unknown error occurred.');
-    }
+  } catch (err) {
+    core.setFailed(`Error: ${err.message}`);
   }
 }
